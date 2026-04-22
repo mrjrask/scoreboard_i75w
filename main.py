@@ -27,6 +27,15 @@ class ScoreboardState:
         self.balls = 0
         self.strikes = 0
         self.outs = 0
+        self.text_colors = {
+            "team_a_name": "#FFFFFF",
+            "team_a_score": "#FFFFFF",
+            "team_b_name": "#FFFFFF",
+            "team_b_score": "#FFFFFF",
+            "inning_label": "#FFFFFF",
+            "inning_value": "#FFFFFF",
+            "count_labels": "#FFFFFF",
+        }
 
     def clamp(self):
         self.score_a = max(0, self.score_a)
@@ -73,6 +82,29 @@ class ScoreboardState:
         self.team_a = (team_a or "TEAM A").strip().upper()[:10]
         self.team_b = (team_b or "TEAM B").strip().upper()[:10]
 
+    def update_text_colors(self, values):
+        keys = (
+            "team_a_name",
+            "team_a_score",
+            "team_b_name",
+            "team_b_score",
+            "inning_label",
+            "inning_value",
+            "count_labels",
+        )
+        for key in keys:
+            value = values.get(key, "")
+            if self._is_hex_color(value):
+                self.text_colors[key] = value.upper()
+
+    def _is_hex_color(self, value):
+        if len(value) != 7 or value[0] != "#":
+            return False
+        for c in value[1:]:
+            if c not in "0123456789abcdefABCDEF":
+                return False
+        return True
+
 
 class MatrixRenderer:
     def __init__(self, state):
@@ -84,9 +116,21 @@ class MatrixRenderer:
         self.WHITE = self.g.create_pen(255, 255, 255)
         self.RED = self.g.create_pen(255, 40, 0)
         self.DIM = self.g.create_pen(48, 48, 48)
+        self._pen_cache = {}
+
+    def _pen_from_hex(self, color_hex):
+        if color_hex in self._pen_cache:
+            return self._pen_cache[color_hex]
+        r = int(color_hex[1:3], 16)
+        g = int(color_hex[3:5], 16)
+        b = int(color_hex[5:7], 16)
+        pen = self.g.create_pen(r, g, b)
+        self._pen_cache[color_hex] = pen
+        return pen
 
     def _draw_count_row(self, y, label, count, max_count):
-        self.g.set_pen(self.WHITE)
+        s = self.state
+        self.g.set_pen(self._pen_from_hex(s.text_colors["count_labels"]))
         self.g.text(label, 40, y - 3, scale=1)
         for i in range(max_count):
             self.g.set_pen(self.RED if i < count else self.DIM)
@@ -97,14 +141,19 @@ class MatrixRenderer:
         self.g.set_pen(self.BLACK)
         self.g.clear()
 
-        self.g.set_pen(self.WHITE)
+        self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_name"]))
         self.g.text(s.team_a, 1, 1, scale=1)
+        self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_score"]))
         self.g.text(str(s.score_a), 52, 1, scale=2)
 
+        self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_name"]))
         self.g.text(s.team_b, 1, 17, scale=1)
+        self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_score"]))
         self.g.text(str(s.score_b), 52, 17, scale=2)
 
+        self.g.set_pen(self._pen_from_hex(s.text_colors["inning_label"]))
         self.g.text("INN", 1, 45, scale=1)
+        self.g.set_pen(self._pen_from_hex(s.text_colors["inning_value"]))
         self.g.text(str(s.inning), 22, 43, scale=2)
 
         self.g.set_pen(self.RED)
@@ -141,6 +190,27 @@ HTML_TEMPLATE = """<!doctype html>
     <form method=\"post\" action=\"/rename\">
       <input name=\"team_a\" maxlength=\"10\" value=\"{team_a}\"> <input name=\"team_b\" maxlength=\"10\" value=\"{team_b}\">
       <button type=\"submit\">Rename</button>
+    </form>
+  </div>
+
+  <div class=\"card\">
+    <form method=\"post\" action=\"/colors\">
+      <div class=\"row\">
+        <label>Team A Name <input type=\"color\" name=\"team_a_name\" value=\"{team_a_name_color}\"></label>
+        <label>Team A Score <input type=\"color\" name=\"team_a_score\" value=\"{team_a_score_color}\"></label>
+      </div>
+      <div class=\"row\">
+        <label>Team B Name <input type=\"color\" name=\"team_b_name\" value=\"{team_b_name_color}\"></label>
+        <label>Team B Score <input type=\"color\" name=\"team_b_score\" value=\"{team_b_score_color}\"></label>
+      </div>
+      <div class=\"row\">
+        <label>Inning Label <input type=\"color\" name=\"inning_label\" value=\"{inning_label_color}\"></label>
+        <label>Inning Value <input type=\"color\" name=\"inning_value\" value=\"{inning_value_color}\"></label>
+      </div>
+      <div class=\"row\">
+        <label>Count Labels <input type=\"color\" name=\"count_labels\" value=\"{count_labels_color}\"></label>
+        <button type=\"submit\">Save Text Colors</button>
+      </div>
     </form>
   </div>
 
@@ -225,6 +295,10 @@ async def handle_client(reader, writer, state):
             values = parse_form(body)
             state.rename(values.get("team_a", "TEAM A"), values.get("team_b", "TEAM B"))
             response = "HTTP/1.1 303 See Other\r\nLocation: /\r\n\r\n"
+        elif method == "POST" and path == "/colors":
+            values = parse_form(body)
+            state.update_text_colors(values)
+            response = "HTTP/1.1 303 See Other\r\nLocation: /\r\n\r\n"
         else:
             page = HTML_TEMPLATE.format(
                 team_a=state.team_a,
@@ -236,6 +310,13 @@ async def handle_client(reader, writer, state):
                 balls=state.balls,
                 strikes=state.strikes,
                 outs=state.outs,
+                team_a_name_color=state.text_colors["team_a_name"],
+                team_a_score_color=state.text_colors["team_a_score"],
+                team_b_name_color=state.text_colors["team_b_name"],
+                team_b_score_color=state.text_colors["team_b_score"],
+                inning_label_color=state.text_colors["inning_label"],
+                inning_value_color=state.text_colors["inning_value"],
+                count_labels_color=state.text_colors["count_labels"],
             )
             response = (
                 "HTTP/1.1 200 OK\r\n"
