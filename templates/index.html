@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Baseball Scoreboard Controller</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main>
+    <h1>Baseball Scoreboard Controller</h1>
+
+    <section class="card">
+      <h2>Current State</h2>
+      <p><strong>{{ state.team_a }}</strong>: {{ state.score_a }}</p>
+      <p><strong>{{ state.team_b }}</strong>: {{ state.score_b }}</p>
+      <p>Inning: {{ state.inning }} ({{ state.inning_half|capitalize }})</p>
+      <p>Balls: {{ state.balls }} | Strikes: {{ state.strikes }} | Outs: {{ state.outs }}</p>
+    </section>
+
+    <section class="card">
+      <h2>Team Names</h2>
+      <form method="post" action="/rename" class="grid2">
+        <label>Team A
+          <input type="text" name="team_a" maxlength="10" value="{{ state.team_a }}">
+        </label>
+        <label>Team B
+          <input type="text" name="team_b" maxlength="10" value="{{ state.team_b }}">
+        </label>
+        <button type="submit">Update Names</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Scoring</h2>
+      <div class="row">
+        <form method="post" action="/action"><input type="hidden" name="action" value="score_a_inc"><button>Team A +1</button></form>
+        <form method="post" action="/action"><input type="hidden" name="action" value="score_a_dec"><button>Team A -1</button></form>
+      </div>
+      <div class="row">
+        <form method="post" action="/action"><input type="hidden" name="action" value="score_b_inc"><button>Team B +1</button></form>
+        <form method="post" action="/action"><input type="hidden" name="action" value="score_b_dec"><button>Team B -1</button></form>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Inning</h2>
+      <div class="row">
+        <form method="post" action="/action"><input type="hidden" name="action" value="inning_inc"><button>Inning +1</button></form>
+        <form method="post" action="/action"><input type="hidden" name="action" value="inning_dec"><button>Inning -1</button></form>
+        <form method="post" action="/action"><input type="hidden" name="action" value="half_toggle"><button>Toggle Top/Bottom</button></form>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Counts</h2>
+      <div class="row">
+        <form method="post" action="/action"><input type="hidden" name="action" value="balls_cycle"><button>Cycle Balls (0-3)</button></form>
+        <form method="post" action="/action"><input type="hidden" name="action" value="strikes_cycle"><button>Cycle Strikes (0-2)</button></form>
+        <form method="post" action="/action"><input type="hidden" name="action" value="outs_cycle"><button>Cycle Outs (0-2)</button></form>
+      </div>
+    </section>
+
+    <section class="card">
+      <form method="post" action="/action">
+        <input type="hidden" name="action" value="reset">
+        <button class="danger">Reset Game</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
