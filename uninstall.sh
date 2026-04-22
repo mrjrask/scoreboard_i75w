@@ -1,31 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="baseball-scoreboard"
-INSTALL_DIR="/opt/${APP_NAME}"
-SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
-
-if [[ $EUID -ne 0 ]]; then
-  echo "Please run with sudo: sudo ./uninstall.sh"
+if ! command -v mpremote >/dev/null 2>&1; then
+  echo "mpremote not found. Install with: python3 -m pip install --upgrade mpremote"
   exit 1
 fi
 
-echo "Stopping and disabling service if present..."
-if systemctl list-unit-files | grep -q "^${APP_NAME}.service"; then
-  systemctl stop "${APP_NAME}.service" || true
-  systemctl disable "${APP_NAME}.service" || true
-fi
+echo "Removing files from connected MicroPython device..."
+mpremote fs rm :main.py || true
+mpremote fs rm :secrets.py || true
 
-if [[ -f "${SERVICE_FILE}" ]]; then
-  rm -f "${SERVICE_FILE}"
-fi
+echo "Resetting device..."
+mpremote reset
 
-systemctl daemon-reload
-
-if [[ -d "${INSTALL_DIR}" ]]; then
-  rm -rf "${INSTALL_DIR}"
-  echo "Removed ${INSTALL_DIR}"
-fi
-
-echo "Uninstall complete."
-echo "Note: /opt/rpi-rgb-led-matrix was left in place intentionally."
+echo "Done."

@@ -1,2 +1,3 @@
-Flask==3.1.0
-Pillow==11.1.0
+# No host-side runtime requirements for the firmware itself.
+# Optional deployment helper:
+# mpremote
