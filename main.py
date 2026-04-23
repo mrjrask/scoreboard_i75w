@@ -105,8 +105,8 @@ class ScoreboardState:
         self.save()
 
     def rename(self, team_a, team_b):
-        self.team_a = (team_a or "TEAM A").strip().upper()[:10]
-        self.team_b = (team_b or "TEAM B").strip().upper()[:10]
+        self.team_a = (team_a or "TEAM A").strip().upper()[:7]
+        self.team_b = (team_b or "TEAM B").strip().upper()[:7]
         self.save()
 
     def update_text_colors(self, values):
@@ -157,8 +157,8 @@ class ScoreboardState:
             self.clamp()
             return
 
-        self.team_a = str(saved.get("team_a", self.team_a)).strip().upper()[:10] or "TEAM A"
-        self.team_b = str(saved.get("team_b", self.team_b)).strip().upper()[:10] or "TEAM B"
+        self.team_a = str(saved.get("team_a", self.team_a)).strip().upper()[:7] or "TEAM A"
+        self.team_b = str(saved.get("team_b", self.team_b)).strip().upper()[:7] or "TEAM B"
         self.score_a = int(saved.get("score_a", self.score_a))
         self.score_b = int(saved.get("score_b", self.score_b))
         self.inning = int(saved.get("inning", self.inning))
@@ -269,13 +269,13 @@ class MatrixRenderer:
 
         self.g.set_pen(self.RED)
         if s.inning_half == "top":
-            self.g.triangle(inning_center_x, 33, inning_center_x - 6, 39, inning_center_x + 6, 39)
+            self.g.triangle(inning_center_x - 3, 37, inning_center_x - 9, 43, inning_center_x + 3, 43)
         else:
-            self.g.triangle(inning_center_x - 6, 57, inning_center_x + 6, 57, inning_center_x, 63)
+            self.g.triangle(inning_center_x - 9, 55, inning_center_x + 3, 55, inning_center_x - 3, 61)
 
         self._draw_count_row(43, "B", s.balls, 3)
         self._draw_count_row(51, "S", s.strikes, 2)
-        self._draw_count_row(59, "O", s.outs, 3)
+        self._draw_count_row(59, "O", s.outs, 2)
 
         self.i75.update()
 
@@ -299,7 +299,7 @@ HTML_TEMPLATE = """<!doctype html>
 
   <div class=\"card\">
     <form method=\"post\" action=\"/rename\">
-      <input name=\"team_a\" maxlength=\"10\" value=\"{team_a}\"> <input name=\"team_b\" maxlength=\"10\" value=\"{team_b}\">
+      <input name=\"team_a\" maxlength=\"7\" value=\"{team_a}\"> <input name=\"team_b\" maxlength=\"7\" value=\"{team_b}\">
       <button type=\"submit\">Rename</button>
     </form>
   </div>
@@ -342,8 +342,14 @@ HTML_TEMPLATE = """<!doctype html>
     <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"balls_cycle\"><button>Balls</button></form>
     <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"strikes_cycle\"><button>Strikes</button></form>
     <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"outs_cycle\"><button>Outs</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset_scores\"><button>Reset Scores</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset\"><button>Reset</button></form>
+  </div>
+
+  <div class=\"card\">
+    <b>Reset Controls</b>
+    <div class=\"row\">
+      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset_scores\"><button type=\"submit\" onclick=\"return confirm('Reset both team scores?');\">Reset Scores</button></form>
+      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset\"><button type=\"submit\" onclick=\"return confirm('Reset the full scoreboard?');\">Reset All</button></form>
+    </div>
   </div>
 </body></html>
 """
