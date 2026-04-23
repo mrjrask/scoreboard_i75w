@@ -7,6 +7,7 @@ phone/browser control over Wi-Fi.
 
 import uasyncio as asyncio
 import time
+import math
 
 try:
     import network
@@ -135,6 +136,8 @@ class ScoreboardState:
             brightness = float(value)
         except (TypeError, ValueError):
             return
+        if not math.isfinite(brightness):
+            return
         self.brightness = brightness
         self.clamp()
         self.save()
@@ -181,7 +184,9 @@ class ScoreboardState:
         self.balls = int(saved.get("balls", self.balls))
         self.strikes = int(saved.get("strikes", self.strikes))
         self.outs = int(saved.get("outs", self.outs))
-        self.brightness = float(saved.get("brightness", self.brightness))
+        brightness = float(saved.get("brightness", self.brightness))
+        if math.isfinite(brightness):
+            self.brightness = brightness
 
         text_colors = saved.get("text_colors", {})
         if isinstance(text_colors, dict):
