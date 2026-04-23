@@ -272,9 +272,9 @@ class MatrixRenderer:
 
         self.g.set_pen(self.RED)
         if s.inning_half == "top":
-            self.g.triangle(inning_center_x - 3, 37, inning_center_x - 9, 43, inning_center_x + 3, 43)
+            self.g.triangle(inning_center_x - 2, 39, inning_center_x - 6, 43, inning_center_x + 2, 43)
         else:
-            self.g.triangle(inning_center_x - 9, 55, inning_center_x + 3, 55, inning_center_x - 3, 61)
+            self.g.triangle(inning_center_x - 6, 55, inning_center_x + 2, 55, inning_center_x - 2, 59)
 
         self._draw_count_row(43, "B", s.balls, 3)
         self._draw_count_row(51, "S", s.strikes, 2)
