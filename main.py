@@ -153,14 +153,23 @@ class MatrixRenderer:
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["inning_label"]))
         self.g.text("INN", 1, 45, scale=1)
+        inning_text = str(s.inning)
+        inning_x = 22
+        inning_y = 43
+        inning_scale = 2
+
         self.g.set_pen(self._pen_from_hex(s.text_colors["inning_value"]))
-        self.g.text(str(s.inning), 22, 43, scale=2)
+        self.g.text(inning_text, inning_x, inning_y, scale=inning_scale)
+
+        # Approximate the center of the inning text so top/bottom indicators
+        # are centered directly above/below the value.
+        inning_center_x = inning_x + (len(inning_text) * 6 * inning_scale) // 2
 
         self.g.set_pen(self.RED)
         if s.inning_half == "top":
-            self.g.triangle(30, 33, 24, 39, 36, 39)
+            self.g.triangle(inning_center_x, 33, inning_center_x - 6, 39, inning_center_x + 6, 39)
         else:
-            self.g.triangle(24, 57, 36, 57, 30, 63)
+            self.g.triangle(inning_center_x - 6, 57, inning_center_x + 6, 57, inning_center_x, 63)
 
         self._draw_count_row(43, "B", s.balls, 3)
         self._draw_count_row(51, "S", s.strikes, 2)
