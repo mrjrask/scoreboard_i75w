@@ -47,6 +47,21 @@ class ScoreboardState:
         if self.inning_half not in ("top", "bottom"):
             self.inning_half = "top"
 
+    def _advance_half_inning(self):
+        if self.inning_half == "top":
+            self.inning_half = "bottom"
+        else:
+            self.inning_half = "top"
+            self.inning += 1
+
+    def _register_out(self):
+        self.outs += 1
+        self.balls = 0
+        self.strikes = 0
+        if self.outs >= 3:
+            self.outs = 0
+            self._advance_half_inning()
+
     def update(self, action):
         if action == "score_a_inc":
             self.score_a += 1
@@ -65,9 +80,12 @@ class ScoreboardState:
         elif action == "balls_cycle":
             self.balls = (self.balls + 1) % 4
         elif action == "strikes_cycle":
-            self.strikes = (self.strikes + 1) % 3
+            if self.strikes == 2:
+                self._register_out()
+            else:
+                self.strikes += 1
         elif action == "outs_cycle":
-            self.outs = (self.outs + 1) % 3
+            self._register_out()
         elif action == "reset":
             self.score_a = 0
             self.score_b = 0
@@ -183,7 +201,7 @@ class MatrixRenderer:
 
         self._draw_count_row(43, "B", s.balls, 3)
         self._draw_count_row(51, "S", s.strikes, 2)
-        self._draw_count_row(59, "O", s.outs, 2)
+        self._draw_count_row(59, "O", s.outs, 3)
 
         self.i75.update()
 
