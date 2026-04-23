@@ -84,14 +84,18 @@ mpremote reset
 ## Using it
 
 - After boot, the matrix shows the scoreboard.
-- If `secrets.py` is configured and Wi-Fi connects, the device now requests hostname
+- If `secrets.py` is configured and Wi-Fi connects, the device requests DHCP hostname
   `score`, so try:
+  - `http://score` (works on networks that publish DHCP hostnames in local DNS)
+- If mDNS is available in your MicroPython firmware and client device, you can also try:
   - `http://score.local`
-- If that does not resolve on your network, check the serial console for the device IP:
-  - `Wi-Fi connected, browse to http://<device-ip>`
+- The serial console now prints exactly which URL variants are available at boot.
 
 ## Troubleshooting
 
 - **No web UI:** Ensure `secrets.py` exists and credentials are correct.
+- **`score.local` does not resolve:** `.local` requires mDNS support on both the board
+  firmware and the phone/computer. If unavailable, use `http://score` (if your router
+  resolves DHCP names) or the printed IP address.
 - **Panel not updating:** Confirm you flashed Pimoroni Interstate 75 W MicroPython firmware.
 - **Dim/flicker:** Verify power supply current capability and HUB75 wiring orientation.

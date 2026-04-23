@@ -16,6 +16,8 @@ except ImportError:
 
 from interstate75 import Interstate75, DISPLAY_INTERSTATE75_64X64
 
+DEVICE_HOSTNAME = "score"
+
 
 class ScoreboardState:
     STATE_FILE = "scoreboard_state.json"
@@ -515,15 +517,29 @@ def connect_wifi():
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
 
-    # Try to make the board discoverable as http://score.local on networks
-    # that support local hostname resolution (mDNS/router DNS).
-    for key in ("hostname", "dhcp_hostname"):
-        try:
-            wlan.config(**{key: "score"})
-            print("Configured network hostname: score.local")
-            break
-        except Exception:
-            pass
+    configured_hostname = False
+
+    # Newer MicroPython builds expose network.hostname("name").
+    try:
+        network.hostname(DEVICE_HOSTNAME)
+        configured_hostname = True
+    except Exception:
+        pass
+
+    # Older builds may expose hostname only via WLAN config keys.
+    if not configured_hostname:
+        for key in ("hostname", "dhcp_hostname"):
+            try:
+                wlan.config(**{key: DEVICE_HOSTNAME})
+                configured_hostname = True
+                break
+            except Exception:
+                pass
+
+    if configured_hostname:
+        print("Configured DHCP hostname: %s" % DEVICE_HOSTNAME)
+    else:
+        print("Could not configure DHCP hostname on this firmware.")
 
     if not wlan.isconnected():
         print("Connecting Wi-Fi...", ssid)
@@ -535,7 +551,43 @@ def connect_wifi():
 
     if wlan.isconnected():
         ip = wlan.ifconfig()[0]
+        # Some networks resolve DHCP hostnames (for example http://score),
+        # while .local requires mDNS support on both firmware and client.
+        mdns_ready = False
+        try:
+            import mdns
+
+            # Probe without relying on a specific mdns API variant.
+            server_obj = None
+            if hasattr(mdns, "Server"):
+                try:
+                    server_obj = mdns.Server()
+                except Exception:
+                    server_obj = None
+
+            configured = False
+            if server_obj and hasattr(server_obj, "hostname"):
+                try:
+                    server_obj.hostname(DEVICE_HOSTNAME)
+                    configured = True
+                except Exception:
+                    pass
+            if not configured and hasattr(mdns, "hostname"):
+                try:
+                    mdns.hostname(DEVICE_HOSTNAME)
+                    configured = True
+                except Exception:
+                    pass
+            mdns_ready = configured
+        except Exception:
+            mdns_ready = False
+
         print("Wi-Fi connected, browse to http://%s" % ip)
+        print("Try DHCP name: http://%s" % DEVICE_HOSTNAME)
+        if mdns_ready:
+            print("mDNS active, try: http://%s.local" % DEVICE_HOSTNAME)
+        else:
+            print(".local name unavailable: mDNS not active on this firmware/client.")
     else:
         print("Wi-Fi connection failed.")
     return wlan
