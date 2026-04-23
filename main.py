@@ -39,6 +39,7 @@ class ScoreboardState:
             "inning_value": "#FFFFFF",
             "count_labels": "#FFFFFF",
         }
+        self.brightness = 1.0
         self.load()
 
     def clamp(self):
@@ -50,6 +51,7 @@ class ScoreboardState:
         self.outs = min(max(0, self.outs), 2)
         if self.inning_half not in ("top", "bottom"):
             self.inning_half = "top"
+        self.brightness = min(max(self.brightness, 0.05), 1.0)
 
     def _advance_half_inning(self):
         if self.inning_half == "top":
@@ -128,6 +130,15 @@ class ScoreboardState:
                 self.text_colors[key] = value.upper()
         self.save()
 
+    def set_brightness(self, value):
+        try:
+            brightness = float(value)
+        except (TypeError, ValueError):
+            return
+        self.brightness = brightness
+        self.clamp()
+        self.save()
+
     def _sync_filesystem(self):
         try:
             import os
@@ -148,6 +159,7 @@ class ScoreboardState:
             "strikes": self.strikes,
             "outs": self.outs,
             "text_colors": self.text_colors,
+            "brightness": self.brightness,
         }
 
     def load(self):
@@ -169,6 +181,7 @@ class ScoreboardState:
         self.balls = int(saved.get("balls", self.balls))
         self.strikes = int(saved.get("strikes", self.strikes))
         self.outs = int(saved.get("outs", self.outs))
+        self.brightness = float(saved.get("brightness", self.brightness))
 
         text_colors = saved.get("text_colors", {})
         if isinstance(text_colors, dict):
@@ -215,6 +228,16 @@ class MatrixRenderer:
         self.RED = self.g.create_pen(255, 40, 0)
         self.DIM = self.g.create_pen(48, 48, 48)
         self._pen_cache = {}
+        self._apply_brightness()
+
+    def _apply_brightness(self):
+        # Pimoroni API exposes brightness on either Interstate75 or display.
+        for target in (self.i75, self.g):
+            try:
+                target.set_brightness(self.state.brightness)
+                return
+            except Exception:
+                pass
 
     def _pen_from_hex(self, color_hex):
         if color_hex in self._pen_cache:
@@ -241,6 +264,7 @@ class MatrixRenderer:
 
     def draw(self):
         s = self.state
+        self._apply_brightness()
         self.g.set_pen(self.BLACK)
         self.g.clear()
 
@@ -325,6 +349,16 @@ HTML_TEMPLATE = """<!doctype html>
         <label>Count Labels <input type=\"color\" name=\"count_labels\" value=\"{count_labels_color}\"></label>
         <button type=\"submit\">Save Text Colors</button>
       </div>
+    </form>
+  </div>
+
+  <div class=\"card\">
+    <form method=\"post\" action=\"/brightness\">
+      <label>Brightness:
+        <input type=\"range\" name=\"brightness\" min=\"0.05\" max=\"1.0\" step=\"0.05\" value=\"{brightness}\" style=\"width: 220px;\">
+      </label>
+      <span>{brightness_label}</span>
+      <button type=\"submit\">Set Brightness</button>
     </form>
   </div>
 
@@ -421,6 +455,10 @@ async def handle_client(reader, writer, state):
             values = parse_form(body)
             state.update_text_colors(values)
             response = "HTTP/1.1 303 See Other\r\nLocation: /\r\n\r\n"
+        elif method == "POST" and path == "/brightness":
+            values = parse_form(body)
+            state.set_brightness(values.get("brightness", "1.0"))
+            response = "HTTP/1.1 303 See Other\r\nLocation: /\r\n\r\n"
         else:
             page = HTML_TEMPLATE.format(
                 team_a=state.team_a,
@@ -439,6 +477,8 @@ async def handle_client(reader, writer, state):
                 inning_label_color=state.text_colors["inning_label"],
                 inning_value_color=state.text_colors["inning_value"],
                 count_labels_color=state.text_colors["count_labels"],
+                brightness=state.brightness,
+                brightness_label="{:.0f}%".format(state.brightness * 100),
             )
             response = (
                 "HTTP/1.1 200 OK\r\n"
