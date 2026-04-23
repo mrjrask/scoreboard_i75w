@@ -347,6 +347,17 @@ def connect_wifi():
 
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
+
+    # Try to make the board discoverable as http://score.local on networks
+    # that support local hostname resolution (mDNS/router DNS).
+    for key in ("hostname", "dhcp_hostname"):
+        try:
+            wlan.config(**{key: "score"})
+            print("Configured network hostname: score.local")
+            break
+        except Exception:
+            pass
+
     if not wlan.isconnected():
         print("Connecting Wi-Fi...", ssid)
         wlan.connect(ssid, password)

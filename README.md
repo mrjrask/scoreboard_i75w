@@ -83,13 +83,14 @@ mpremote reset
 ## Using it
 
 - After boot, the matrix shows the scoreboard.
-- If `secrets.py` is configured and Wi-Fi connects, check the serial console for the device IP:
+- If `secrets.py` is configured and Wi-Fi connects, the device now requests hostname
+  `score`, so try:
+  - `http://score.local`
+- If that does not resolve on your network, check the serial console for the device IP:
   - `Wi-Fi connected, browse to http://<device-ip>`
-- Open that IP in your phone browser (same network) to control the scoreboard.
 
 ## Troubleshooting
 
 - **No web UI:** Ensure `secrets.py` exists and credentials are correct.
 - **Panel not updating:** Confirm you flashed Pimoroni Interstate 75 W MicroPython firmware.
 - **Dim/flicker:** Verify power supply current capability and HUB75 wiring orientation.
-
