@@ -329,10 +329,10 @@ HTML_TEMPLATE = """<!doctype html>
   </div>
 
   <div class=\"card row\">
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_a_inc\"><button>Team A +1</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_a_dec\"><button>Team A -1</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_b_inc\"><button>Team B +1</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_b_dec\"><button>Team B -1</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_a_inc\"><button>{team_a} +1</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_a_dec\"><button>{team_a} -1</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_b_inc\"><button>{team_b} +1</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_b_dec\"><button>{team_b} -1</button></form>
   </div>
 
   <div class=\"card row\">
