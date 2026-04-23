@@ -17,6 +17,9 @@ from interstate75 import Interstate75, DISPLAY_INTERSTATE75_64X64
 
 
 class ScoreboardState:
+    STATE_FILE = "scoreboard_state.json"
+    STATE_TMP_FILE = "scoreboard_state.tmp"
+
     def __init__(self):
         self.team_a = "TEAM A"
         self.team_b = "TEAM B"
@@ -36,6 +39,7 @@ class ScoreboardState:
             "inning_value": "#FFFFFF",
             "count_labels": "#FFFFFF",
         }
+        self.load()
 
     def clamp(self):
         self.score_a = max(0, self.score_a)
@@ -98,10 +102,12 @@ class ScoreboardState:
             self.score_a = 0
             self.score_b = 0
         self.clamp()
+        self.save()
 
     def rename(self, team_a, team_b):
         self.team_a = (team_a or "TEAM A").strip().upper()[:10]
         self.team_b = (team_b or "TEAM B").strip().upper()[:10]
+        self.save()
 
     def update_text_colors(self, values):
         keys = (
@@ -117,6 +123,74 @@ class ScoreboardState:
             value = values.get(key, "")
             if self._is_hex_color(value):
                 self.text_colors[key] = value.upper()
+        self.save()
+
+    def _sync_filesystem(self):
+        try:
+            import os
+
+            os.sync()
+        except Exception:
+            pass
+
+    def to_dict(self):
+        return {
+            "team_a": self.team_a,
+            "team_b": self.team_b,
+            "score_a": self.score_a,
+            "score_b": self.score_b,
+            "inning": self.inning,
+            "inning_half": self.inning_half,
+            "balls": self.balls,
+            "strikes": self.strikes,
+            "outs": self.outs,
+            "text_colors": self.text_colors,
+        }
+
+    def load(self):
+        try:
+            import json
+
+            with open(self.STATE_FILE, "r") as handle:
+                saved = json.loads(handle.read())
+        except Exception:
+            self.clamp()
+            return
+
+        self.team_a = str(saved.get("team_a", self.team_a)).strip().upper()[:10] or "TEAM A"
+        self.team_b = str(saved.get("team_b", self.team_b)).strip().upper()[:10] or "TEAM B"
+        self.score_a = int(saved.get("score_a", self.score_a))
+        self.score_b = int(saved.get("score_b", self.score_b))
+        self.inning = int(saved.get("inning", self.inning))
+        self.inning_half = str(saved.get("inning_half", self.inning_half))
+        self.balls = int(saved.get("balls", self.balls))
+        self.strikes = int(saved.get("strikes", self.strikes))
+        self.outs = int(saved.get("outs", self.outs))
+
+        text_colors = saved.get("text_colors", {})
+        if isinstance(text_colors, dict):
+            for key, value in text_colors.items():
+                if key in self.text_colors and self._is_hex_color(value):
+                    self.text_colors[key] = value.upper()
+
+        self.clamp()
+
+    def save(self):
+        try:
+            import json
+            import os
+
+            with open(self.STATE_TMP_FILE, "w") as handle:
+                handle.write(json.dumps(self.to_dict()))
+            self._sync_filesystem()
+            try:
+                os.remove(self.STATE_FILE)
+            except OSError:
+                pass
+            os.rename(self.STATE_TMP_FILE, self.STATE_FILE)
+            self._sync_filesystem()
+        except Exception as exc:
+            print("State save failed:", exc)
 
     def _is_hex_color(self, value):
         if len(value) != 7 or value[0] != "#":

@@ -13,6 +13,7 @@ This project is rewritten for **Pimoroni Interstate 75 W** (RP2040 + Wi-Fi) driv
   - Inning +/- and Top/Bottom toggle
   - Balls (0-3), Strikes (0-2), Outs (0-2)
   - Full reset
+  - Automatic state persistence across board resets/reboots, including abrupt power loss after a change
 
 ## Files in this repo
 
