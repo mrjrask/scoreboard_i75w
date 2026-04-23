@@ -175,11 +175,11 @@ HTML_TEMPLATE = """<!doctype html>
   <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
   <title>Interstate 75 W Scoreboard</title>
   <style>
-    body { font-family: sans-serif; background: #111; color: #eee; margin: 16px; }
-    .card { background: #1d1d1d; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
-    .row { display: flex; flex-wrap: wrap; gap: 8px; }
-    button { padding: 8px 10px; border-radius: 6px; border: 1px solid #666; background: #2a2a2a; color: #fff; }
-    input { padding: 8px; border-radius: 6px; border: 1px solid #666; background: #0d0d0d; color: #fff; width: 130px; }
+    body {{ font-family: sans-serif; background: #111; color: #eee; margin: 16px; }}
+    .card {{ background: #1d1d1d; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 12px; }}
+    .row {{ display: flex; flex-wrap: wrap; gap: 8px; }}
+    button {{ padding: 8px 10px; border-radius: 6px; border: 1px solid #666; background: #2a2a2a; color: #fff; }}
+    input {{ padding: 8px; border-radius: 6px; border: 1px solid #666; background: #0d0d0d; color: #fff; width: 130px; }}
   </style>
 </head>
 <body>
