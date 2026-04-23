@@ -101,6 +101,9 @@ class ScoreboardState:
         elif action == "reset_scores":
             self.score_a = 0
             self.score_b = 0
+        elif action == "reset_count":
+            self.balls = 0
+            self.strikes = 0
         self.clamp()
         self.save()
 
@@ -347,6 +350,7 @@ HTML_TEMPLATE = """<!doctype html>
   <div class=\"card\">
     <b>Reset Controls</b>
     <div class=\"row\">
+      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset_count\"><button type=\"submit\" onclick=\"return confirm('Reset balls and strikes?');\">Reset Count</button></form>
       <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset_scores\"><button type=\"submit\" onclick=\"return confirm('Reset both team scores?');\">Reset Scores</button></form>
       <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset\"><button type=\"submit\" onclick=\"return confirm('Reset the full scoreboard?');\">Reset All</button></form>
     </div>
