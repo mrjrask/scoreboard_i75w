@@ -18,6 +18,13 @@ from interstate75 import Interstate75, DISPLAY_INTERSTATE75_64X64
 
 DEVICE_HOSTNAME = "score"
 
+try:
+    import secrets
+
+    BATTING_ORDER_ENABLED = bool(getattr(secrets, "BATTING_ORDER", True))
+except Exception:
+    BATTING_ORDER_ENABLED = True
+
 
 class ScoreboardState:
     STATE_FILE = "scoreboard_state.json"
@@ -43,6 +50,10 @@ class ScoreboardState:
             "count_labels": "#FFFFFF",
         }
         self.brightness = 1.0
+        self.batting_order_a = 9
+        self.batting_order_b = 9
+        self.current_batter_a = 0
+        self.current_batter_b = 0
         self.load()
 
     def clamp(self):
@@ -55,6 +66,10 @@ class ScoreboardState:
         if self.inning_half not in ("top", "bottom"):
             self.inning_half = "top"
         self.brightness = min(max(self.brightness, 0.05), 1.0)
+        self.batting_order_a = min(max(int(self.batting_order_a), 1), 20)
+        self.batting_order_b = min(max(int(self.batting_order_b), 1), 20)
+        self.current_batter_a = int(self.current_batter_a) % self.batting_order_a
+        self.current_batter_b = int(self.current_batter_b) % self.batting_order_b
 
     def _advance_half_inning(self):
         if self.inning_half == "top":
@@ -109,6 +124,15 @@ class ScoreboardState:
         elif action == "reset_count":
             self.balls = 0
             self.strikes = 0
+        elif action == "batter_a_advance":
+            self.current_batter_a = (self.current_batter_a + 1) % self.batting_order_a
+        elif action == "batter_b_advance":
+            self.current_batter_b = (self.current_batter_b + 1) % self.batting_order_b
+        elif action == "batter_current_advance":
+            if self.inning_half == "top":
+                self.current_batter_a = (self.current_batter_a + 1) % self.batting_order_a
+            else:
+                self.current_batter_b = (self.current_batter_b + 1) % self.batting_order_b
         self.clamp()
         self.save()
 
@@ -144,6 +168,15 @@ class ScoreboardState:
         self.clamp()
         self.save()
 
+    def set_batting_order(self, team_a_count, team_b_count):
+        try:
+            self.batting_order_a = int(team_a_count)
+            self.batting_order_b = int(team_b_count)
+        except (TypeError, ValueError):
+            return
+        self.clamp()
+        self.save()
+
     def _sync_filesystem(self):
         try:
             import os
@@ -165,6 +198,10 @@ class ScoreboardState:
             "outs": self.outs,
             "text_colors": self.text_colors,
             "brightness": self.brightness,
+            "batting_order_a": self.batting_order_a,
+            "batting_order_b": self.batting_order_b,
+            "current_batter_a": self.current_batter_a,
+            "current_batter_b": self.current_batter_b,
         }
 
     def load(self):
@@ -189,6 +226,10 @@ class ScoreboardState:
         brightness = float(saved.get("brightness", self.brightness))
         if math.isfinite(brightness):
             self.brightness = brightness
+        self.batting_order_a = int(saved.get("batting_order_a", self.batting_order_a))
+        self.batting_order_b = int(saved.get("batting_order_b", self.batting_order_b))
+        self.current_batter_a = int(saved.get("current_batter_a", self.current_batter_a))
+        self.current_batter_b = int(saved.get("current_batter_b", self.current_batter_b))
 
         text_colors = saved.get("text_colors", {})
         if isinstance(text_colors, dict):
@@ -269,6 +310,12 @@ class MatrixRenderer:
         text_width = len(text) * 6 * scale
         return max(0, right_edge - text_width)
 
+    def _draw_batting_order(self, x, y, count, current_batter, color_hex):
+        team_pen = self._pen_from_hex(color_hex)
+        for batter in range(count):
+            self.g.set_pen(self.WHITE if batter == current_batter else team_pen)
+            self.g.pixel(x + batter * 3, y)
+
     def draw(self):
         s = self.state
         self._apply_brightness()
@@ -277,12 +324,16 @@ class MatrixRenderer:
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_name"]))
         self.g.text(s.team_a, 0, 0, scale=1)
+        if BATTING_ORDER_ENABLED:
+            self._draw_batting_order(0, 2, s.batting_order_a, s.current_batter_a, s.text_colors["team_a_name"])
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_score"]))
         score_a_text = str(s.score_a)
         self.g.text(score_a_text, self._right_aligned_x(score_a_text, 64, 2), 8, scale=2)
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_name"]))
         self.g.text(s.team_b, 0, 20, scale=1)
+        if BATTING_ORDER_ENABLED:
+            self._draw_batting_order(0, 22, s.batting_order_b, s.current_batter_b, s.text_colors["team_b_name"])
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_score"]))
         score_b_text = str(s.score_b)
         self.g.text(score_b_text, self._right_aligned_x(score_b_text, 64, 2), 27, scale=2)
@@ -330,6 +381,7 @@ HTML_TEMPLATE = """<!doctype html>
 <body>
   <h1>Interstate 75 W Baseball Scoreboard</h1>
   <div class=\"card\"><b>{team_a}</b>: {score_a}<br><b>{team_b}</b>: {score_b}<br>Inning: {inning} ({inning_half})<br>Balls: {balls} | Strikes: {strikes} | Outs: {outs}</div>
+  {batting_order_controls}
 
   <div class=\"card\">
     <form method=\"post\" action=\"/rename\">
@@ -399,6 +451,23 @@ HTML_TEMPLATE = """<!doctype html>
 </body></html>
 """
 
+BATTING_ORDER_HTML = """<div class=\"card\">
+    <b>Batting Order</b><br>
+    Team A Batter: {current_batter_a}/{batting_order_a} | Team B Batter: {current_batter_b}/{batting_order_b}
+    <div class=\"row\" style=\"margin-top: 8px;\">
+      <form method=\"post\" action=\"/batting-order\">
+        <label>Team A Batters <input type=\"number\" min=\"1\" max=\"20\" name=\"batting_order_a\" value=\"{batting_order_a}\"></label>
+        <label>Team B Batters <input type=\"number\" min=\"1\" max=\"20\" name=\"batting_order_b\" value=\"{batting_order_b}\"></label>
+        <button type=\"submit\">Save Batting Order</button>
+      </form>
+    </div>
+    <div class=\"row\" style=\"margin-top: 8px;\">
+      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"batter_current_advance\"><button>Advance Current Batter</button></form>
+      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"batter_a_advance\"><button>Advance Team A Batter</button></form>
+      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"batter_b_advance\"><button>Advance Team B Batter</button></form>
+    </div>
+  </div>"""
+
 
 def url_decode(text):
     text = text.replace("+", " ")
@@ -466,7 +535,19 @@ async def handle_client(reader, writer, state):
             values = parse_form(body)
             state.set_brightness(values.get("brightness", "1.0"))
             response = "HTTP/1.1 303 See Other\r\nLocation: /\r\n\r\n"
+        elif method == "POST" and path == "/batting-order":
+            values = parse_form(body)
+            state.set_batting_order(values.get("batting_order_a", "9"), values.get("batting_order_b", "9"))
+            response = "HTTP/1.1 303 See Other\r\nLocation: /\r\n\r\n"
         else:
+            batting_order_controls = ""
+            if BATTING_ORDER_ENABLED:
+                batting_order_controls = BATTING_ORDER_HTML.format(
+                    batting_order_a=state.batting_order_a,
+                    batting_order_b=state.batting_order_b,
+                    current_batter_a=state.current_batter_a + 1,
+                    current_batter_b=state.current_batter_b + 1,
+                )
             page = HTML_TEMPLATE.format(
                 team_a=state.team_a,
                 team_b=state.team_b,
@@ -486,6 +567,7 @@ async def handle_client(reader, writer, state):
                 count_labels_color=state.text_colors["count_labels"],
                 brightness=state.brightness,
                 brightness_label="{:.0f}%".format(state.brightness * 100),
+                batting_order_controls=batting_order_controls,
             )
             response = (
                 "HTTP/1.1 200 OK\r\n"

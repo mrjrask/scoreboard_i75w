@@ -12,6 +12,7 @@ This project is rewritten for **Pimoroni Interstate 75 W** (RP2040 + Wi-Fi) driv
   - Team scores +/-
   - Inning +/- and Top/Bottom toggle
   - Balls (0-3), Strikes (0-2), Outs (0-2)
+  - Optional batting-order tracker per team with configurable lineup size
   - Full reset
   - Automatic state persistence across board resets/reboots, including abrupt power loss after a change
 
@@ -59,6 +60,7 @@ This copies `main.py` and `secrets.py` (if present) to the connected Interstate 
 ```bash
 cp secrets.example.py secrets.py
 # Edit secrets.py and set your real SSID/password.
+# Optional: set BATTING_ORDER = True/False to show/hide batting-order controls and pixels.
 ```
 
 2. Copy files:
