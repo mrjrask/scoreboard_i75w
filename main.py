@@ -131,10 +131,10 @@ class MatrixRenderer:
     def _draw_count_row(self, y, label, count, max_count):
         s = self.state
         self.g.set_pen(self._pen_from_hex(s.text_colors["count_labels"]))
-        self.g.text(label, 40, y - 3, scale=1)
+        self.g.text(label, 36, y - 3, scale=1)
         for i in range(max_count):
             self.g.set_pen(self.RED if i < count else self.DIM)
-            self.g.circle(49 + i * 7, y, 2)
+            self.g.circle(45 + i * 7, y, 2)
 
     def draw(self):
         s = self.state
@@ -162,9 +162,9 @@ class MatrixRenderer:
         else:
             self.g.triangle(24, 57, 36, 57, 30, 63)
 
-        self._draw_count_row(45, "B", s.balls, 3)
-        self._draw_count_row(53, "S", s.strikes, 2)
-        self._draw_count_row(61, "O", s.outs, 2)
+        self._draw_count_row(43, "B", s.balls, 3)
+        self._draw_count_row(51, "S", s.strikes, 2)
+        self._draw_count_row(59, "O", s.outs, 2)
 
         self.i75.update()
 
