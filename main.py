@@ -76,6 +76,9 @@ class ScoreboardState:
             self.balls = 0
             self.strikes = 0
             self.outs = 0
+        elif action == "reset_scores":
+            self.score_a = 0
+            self.score_b = 0
         self.clamp()
 
     def rename(self, team_a, team_b):
@@ -136,6 +139,11 @@ class MatrixRenderer:
             self.g.set_pen(self.RED if i < count else self.DIM)
             self.g.circle(45 + i * 7, y, 2)
 
+    def _right_aligned_x(self, text, right_edge, scale):
+        # PicoGraphics bitmap font is ~6px wide per character at scale=1.
+        text_width = len(text) * 6 * scale
+        return max(1, right_edge - text_width)
+
     def draw(self):
         s = self.state
         self.g.set_pen(self.BLACK)
@@ -144,12 +152,14 @@ class MatrixRenderer:
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_name"]))
         self.g.text(s.team_a, 1, 1, scale=1)
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_score"]))
-        self.g.text(str(s.score_a), 52, 1, scale=2)
+        score_a_text = str(s.score_a)
+        self.g.text(score_a_text, self._right_aligned_x(score_a_text, 63, 2), 1, scale=2)
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_name"]))
         self.g.text(s.team_b, 1, 17, scale=1)
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_score"]))
-        self.g.text(str(s.score_b), 52, 17, scale=2)
+        score_b_text = str(s.score_b)
+        self.g.text(score_b_text, self._right_aligned_x(score_b_text, 63, 2), 17, scale=2)
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["inning_label"]))
         self.g.text("INN", 1, 45, scale=1)
@@ -240,6 +250,7 @@ HTML_TEMPLATE = """<!doctype html>
     <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"balls_cycle\"><button>Balls</button></form>
     <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"strikes_cycle\"><button>Strikes</button></form>
     <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"outs_cycle\"><button>Outs</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset_scores\"><button>Reset Scores</button></form>
     <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset\"><button>Reset</button></form>
   </div>
 </body></html>
