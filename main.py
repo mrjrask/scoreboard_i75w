@@ -108,8 +108,8 @@ class ScoreboardState:
         self.save()
 
     def rename(self, team_a, team_b):
-        self.team_a = (team_a or "TEAM A").strip().upper()[:7]
-        self.team_b = (team_b or "TEAM B").strip().upper()[:7]
+        self.team_a = (team_a or "TEAM A").strip().upper()
+        self.team_b = (team_b or "TEAM B").strip().upper()
         self.save()
 
     def update_text_colors(self, values):
@@ -160,8 +160,8 @@ class ScoreboardState:
             self.clamp()
             return
 
-        self.team_a = str(saved.get("team_a", self.team_a)).strip().upper()[:7] or "TEAM A"
-        self.team_b = str(saved.get("team_b", self.team_b)).strip().upper()[:7] or "TEAM B"
+        self.team_a = str(saved.get("team_a", self.team_a)).strip().upper() or "TEAM A"
+        self.team_b = str(saved.get("team_b", self.team_b)).strip().upper() or "TEAM B"
         self.score_a = int(saved.get("score_a", self.score_a))
         self.score_b = int(saved.get("score_b", self.score_b))
         self.inning = int(saved.get("inning", self.inning))
@@ -237,7 +237,7 @@ class MatrixRenderer:
     def _right_aligned_x(self, text, right_edge, scale):
         # PicoGraphics bitmap font is ~6px wide per character at scale=1.
         text_width = len(text) * 6 * scale
-        return max(1, right_edge - text_width)
+        return max(0, right_edge - text_width)
 
     def draw(self):
         s = self.state
@@ -245,16 +245,16 @@ class MatrixRenderer:
         self.g.clear()
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_name"]))
-        self.g.text(s.team_a, 1, 1, scale=1)
+        self.g.text(s.team_a, 0, 0, scale=1)
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_score"]))
         score_a_text = str(s.score_a)
-        self.g.text(score_a_text, self._right_aligned_x(score_a_text, 63, 2), 1, scale=2)
+        self.g.text(score_a_text, self._right_aligned_x(score_a_text, 64, 2), 8, scale=2)
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_name"]))
-        self.g.text(s.team_b, 1, 17, scale=1)
+        self.g.text(s.team_b, 0, 20, scale=1)
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_score"]))
         score_b_text = str(s.score_b)
-        self.g.text(score_b_text, self._right_aligned_x(score_b_text, 63, 2), 17, scale=2)
+        self.g.text(score_b_text, self._right_aligned_x(score_b_text, 64, 2), 27, scale=2)
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["inning_label"]))
         self.g.text("INN", 1, 45, scale=1)
@@ -302,7 +302,7 @@ HTML_TEMPLATE = """<!doctype html>
 
   <div class=\"card\">
     <form method=\"post\" action=\"/rename\">
-      <input name=\"team_a\" maxlength=\"7\" value=\"{team_a}\"> <input name=\"team_b\" maxlength=\"7\" value=\"{team_b}\">
+      <input name=\"team_a\" value=\"{team_a}\"> <input name=\"team_b\" value=\"{team_b}\">
       <button type=\"submit\">Rename</button>
     </form>
   </div>
