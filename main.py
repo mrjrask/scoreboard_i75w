@@ -26,6 +26,52 @@ except Exception:
     BATTING_ORDER_ENABLED = True
 
 
+class BME280TemperatureReader:
+    def __init__(self):
+        self._sensor = None
+        self._available = None
+        self._last_reading_f = None
+        self._last_poll_ms = None
+        self._poll_interval_ms = 5000
+
+    def _init_sensor(self, i2c):
+        if self._available is False:
+            return
+        if self._sensor is not None:
+            return
+        try:
+            from breakout_bme280 import BreakoutBME280
+
+            self._sensor = BreakoutBME280(i2c)
+            self._available = True
+            print("BME280 detected on QW/ST.")
+        except Exception:
+            self._sensor = None
+            self._available = False
+            print("BME280 not detected on QW/ST.")
+
+    def get_temperature_f(self, i2c):
+        now = time.ticks_ms()
+        if self._last_poll_ms is not None and time.ticks_diff(now, self._last_poll_ms) < self._poll_interval_ms:
+            return self._last_reading_f
+
+        self._last_poll_ms = now
+        self._init_sensor(i2c)
+        if self._sensor is None:
+            self._last_reading_f = None
+            return None
+
+        try:
+            temperature_c, _, _ = self._sensor.read()
+            self._last_reading_f = int(round((temperature_c * 9.0 / 5.0) + 32.0))
+        except Exception:
+            # Sensor disappeared or is not responding; hide value on display.
+            self._sensor = None
+            self._available = None
+            self._last_reading_f = None
+        return self._last_reading_f
+
+
 class ScoreboardState:
     STATE_FILE = "scoreboard_state.json"
     STATE_TMP_FILE = "scoreboard_state.tmp"
@@ -270,6 +316,7 @@ class MatrixRenderer:
         self.state = state
         self.i75 = Interstate75(display=DISPLAY_INTERSTATE75_64X64)
         self.g = self.i75.display
+        self.temperature_reader = BME280TemperatureReader()
 
         self.BLACK = self.g.create_pen(0, 0, 0)
         self.RED_HEX = "#FF2800"
@@ -398,6 +445,13 @@ class MatrixRenderer:
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["inning_value"]))
         self.g.text(inning_text, inning_x, inning_y, scale=inning_scale)
+
+        i2c_bus = getattr(self.i75, "i2c", None)
+        if i2c_bus is not None:
+            temperature_f = self.temperature_reader.get_temperature_f(i2c_bus)
+            if temperature_f is not None:
+                self.g.set_pen(self._pen_from_hex(s.text_colors["count_labels"]))
+                self.g.text(str(temperature_f) + "F", 0, 40, scale=1)
 
         self._draw_count_row(43, "B", s.balls, 3)
         self._draw_count_row(51, "S", s.strikes, 2)
