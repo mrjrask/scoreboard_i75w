@@ -276,6 +276,8 @@ class MatrixRenderer:
         self.RED = self.g.create_pen(255, 40, 0)
         self.DIM = self.g.create_pen(48, 48, 48)
         self._pen_cache = {}
+        self._pulse_pen_cache = {}
+        self._pulse_steps = 12
         self._apply_brightness()
 
     def _set_brightness_target(self, target, brightness):
@@ -323,10 +325,21 @@ class MatrixRenderer:
 
     def _draw_batting_order(self, x, y, count, current_batter, color_hex, pulse_mix):
         team_pen = self._pen_from_hex(color_hex)
-        active_pen = self._pen_from_hex(self._mix_hex_colors(color_hex, "#FFFFFF", pulse_mix))
+        active_pen = self._pulse_pen(color_hex, pulse_mix)
         for batter in range(count):
             self.g.set_pen(active_pen if batter == current_batter else team_pen)
             self.g.pixel(x + batter * 3, y)
+
+    def _pulse_pen(self, color_hex, pulse_mix):
+        step = int(min(max(pulse_mix, 0.0), 1.0) * self._pulse_steps)
+        cache_key = (color_hex, step)
+        if cache_key in self._pulse_pen_cache:
+            return self._pulse_pen_cache[cache_key]
+        mix = step / self._pulse_steps
+        pulse_color = self._mix_hex_colors(color_hex, "#FFFFFF", mix)
+        pen = self._pen_from_hex(pulse_color)
+        self._pulse_pen_cache[cache_key] = pen
+        return pen
 
     def _mix_hex_colors(self, color_a, color_b, mix):
         mix = min(max(mix, 0.0), 1.0)
