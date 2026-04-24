@@ -133,6 +133,9 @@ class ScoreboardState:
                 self.current_batter_a = (self.current_batter_a + 1) % self.batting_order_a
             else:
                 self.current_batter_b = (self.current_batter_b + 1) % self.batting_order_b
+        elif action == "batters_reset_first":
+            self.current_batter_a = 0
+            self.current_batter_b = 0
         self.clamp()
         self.save()
 
@@ -506,6 +509,7 @@ BATTING_ORDER_HTML = """<div class=\"card\">
       <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"batter_current_advance\"><button>Advance Current Batter</button></form>
       <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"batter_a_advance\"><button>Advance Team A Batter</button></form>
       <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"batter_b_advance\"><button>Advance Team B Batter</button></form>
+      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"batters_reset_first\"><button>Reset to First Batter</button></form>
     </div>
   </div>"""
 
