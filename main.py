@@ -26,11 +26,12 @@ except Exception:
     BATTING_ORDER_ENABLED = True
 
 
-class BME280TemperatureReader:
+class BME280EnvironmentReader:
     def __init__(self):
         self._sensor = None
         self._available = None
-        self._last_reading_f = None
+        self._last_temperature_f = None
+        self._last_humidity = None
         self._last_poll_ms = None
         self._poll_interval_ms = 5000
 
@@ -50,26 +51,30 @@ class BME280TemperatureReader:
             self._available = False
             print("BME280 not detected on QW/ST.")
 
-    def get_temperature_f(self, i2c):
+    def get_environment(self, i2c):
         now = time.ticks_ms()
         if self._last_poll_ms is not None and time.ticks_diff(now, self._last_poll_ms) < self._poll_interval_ms:
-            return self._last_reading_f
+            return self._last_temperature_f, self._last_humidity
 
         self._last_poll_ms = now
         self._init_sensor(i2c)
         if self._sensor is None:
-            self._last_reading_f = None
-            return None
+            self._last_temperature_f = None
+            self._last_humidity = None
+            return None, None
 
         try:
-            temperature_c, _, _ = self._sensor.read()
-            self._last_reading_f = int(round((temperature_c * 9.0 / 5.0) + 32.0))
+            temperature_c, pressure, humidity = self._sensor.read()
+            _ = pressure
+            self._last_temperature_f = int(round((temperature_c * 9.0 / 5.0) + 32.0))
+            self._last_humidity = int(round(humidity))
         except Exception:
             # Sensor disappeared or is not responding; hide value on display.
             self._sensor = None
             self._available = None
-            self._last_reading_f = None
-        return self._last_reading_f
+            self._last_temperature_f = None
+            self._last_humidity = None
+        return self._last_temperature_f, self._last_humidity
 
 
 class ScoreboardState:
@@ -316,7 +321,7 @@ class MatrixRenderer:
         self.state = state
         self.i75 = Interstate75(display=DISPLAY_INTERSTATE75_64X64)
         self.g = self.i75.display
-        self.temperature_reader = BME280TemperatureReader()
+        self.environment_reader = BME280EnvironmentReader()
 
         self.BLACK = self.g.create_pen(0, 0, 0)
         self.RED_HEX = "#FF2800"
@@ -448,7 +453,7 @@ class MatrixRenderer:
 
         i2c_bus = getattr(self.i75, "i2c", None)
         if i2c_bus is not None:
-            temperature_f = self.temperature_reader.get_temperature_f(i2c_bus)
+            temperature_f, _ = self.environment_reader.get_environment(i2c_bus)
             if temperature_f is not None:
                 temp_text = str(temperature_f)
                 temp_y = 58
@@ -472,6 +477,12 @@ class MatrixRenderer:
 
         self.i75.update()
 
+    def get_environment_for_web(self):
+        i2c_bus = getattr(self.i75, "i2c", None)
+        if i2c_bus is None:
+            return None, None
+        return self.environment_reader.get_environment(i2c_bus)
+
 
 HTML_TEMPLATE = """<!doctype html>
 <html>
@@ -488,8 +499,8 @@ HTML_TEMPLATE = """<!doctype html>
 </head>
 <body>
   <h1>Interstate 75 W Baseball Scoreboard</h1>
-  <div class=\"card\"><b>{team_a}</b>: {score_a}<br><b>{team_b}</b>: {score_b}<br>Inning: {inning} ({inning_half})<br>Balls: {balls} | Strikes: {strikes} | Outs: {outs}</div>
-  {batting_order_controls}
+  <div class=\"card\"><b>{team_a}</b>: {score_a}<br><b>{team_b}</b>: {score_b}<br>Inning: {inning} ({inning_half})<br>Balls: {balls} | Strikes: {strikes} | Outs: {outs}<br>Temperature: {temperature_label}<br>Humidity: {humidity_label}</div>
+  <div class=\"card\"><a href=\"/config\" style=\"color: #9ad1ff;\">Open Configuration</a></div>
 
   <div class=\"card\">
     <form method=\"post\" action=\"/rename\">
@@ -497,6 +508,54 @@ HTML_TEMPLATE = """<!doctype html>
       <button type=\"submit\">Rename</button>
     </form>
   </div>
+
+  <div class=\"card row\">
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_a_inc\"><button>{team_a} +1</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_a_dec\"><button>{team_a} -1</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_b_inc\"><button>{team_b} +1</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_b_dec\"><button>{team_b} -1</button></form>
+  </div>
+
+  <div class=\"card row\">
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"inning_inc\"><button>Inning +1</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"inning_dec\"><button>Inning -1</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"half_toggle\"><button>Top/Bottom</button></form>
+  </div>
+
+  <div class=\"card row\">
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"balls_cycle\"><button>Balls</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"strikes_cycle\"><button>Strikes</button></form>
+    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"outs_cycle\"><button>Outs</button></form>
+  </div>
+
+  <div class=\"card\">
+    <b>Reset Controls</b>
+    <div class=\"row\">
+      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset_count\"><button type=\"submit\" onclick=\"return confirm('Reset balls and strikes?');\">Reset Count</button></form>
+      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset_scores\"><button type=\"submit\" onclick=\"return confirm('Reset both team scores?');\">Reset Scores</button></form>
+      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset\"><button type=\"submit\" onclick=\"return confirm('Reset the full scoreboard?');\">Reset All</button></form>
+    </div>
+  </div>
+</body></html>
+"""
+
+CONFIG_TEMPLATE = """<!doctype html>
+<html>
+<head>
+  <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
+  <title>Scoreboard Configuration</title>
+  <style>
+    body {{ font-family: sans-serif; background: #111; color: #eee; margin: 16px; }}
+    .card {{ background: #1d1d1d; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 12px; }}
+    .row {{ display: flex; flex-wrap: wrap; gap: 8px; }}
+    button {{ padding: 8px 10px; border-radius: 6px; border: 1px solid #666; background: #2a2a2a; color: #fff; }}
+    input {{ padding: 8px; border-radius: 6px; border: 1px solid #666; background: #0d0d0d; color: #fff; width: 130px; }}
+  </style>
+</head>
+<body>
+  <h1>Configuration</h1>
+  <div class=\"card\"><a href=\"/\" style=\"color: #9ad1ff;\">Back to Scoreboard</a></div>
+  {batting_order_controls}
 
   <div class=\"card\">
     <form method=\"post\" action=\"/colors\">
@@ -527,34 +586,6 @@ HTML_TEMPLATE = """<!doctype html>
       <span>{brightness_label}</span>
       <button type=\"submit\">Set Brightness</button>
     </form>
-  </div>
-
-  <div class=\"card row\">
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_a_inc\"><button>{team_a} +1</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_a_dec\"><button>{team_a} -1</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_b_inc\"><button>{team_b} +1</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"score_b_dec\"><button>{team_b} -1</button></form>
-  </div>
-
-  <div class=\"card row\">
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"inning_inc\"><button>Inning +1</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"inning_dec\"><button>Inning -1</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"half_toggle\"><button>Top/Bottom</button></form>
-  </div>
-
-  <div class=\"card row\">
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"balls_cycle\"><button>Balls</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"strikes_cycle\"><button>Strikes</button></form>
-    <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"outs_cycle\"><button>Outs</button></form>
-  </div>
-
-  <div class=\"card\">
-    <b>Reset Controls</b>
-    <div class=\"row\">
-      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset_count\"><button type=\"submit\" onclick=\"return confirm('Reset balls and strikes?');\">Reset Count</button></form>
-      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset_scores\"><button type=\"submit\" onclick=\"return confirm('Reset both team scores?');\">Reset Scores</button></form>
-      <form method=\"post\" action=\"/action\"><input type=\"hidden\" name=\"action\" value=\"reset\"><button type=\"submit\" onclick=\"return confirm('Reset the full scoreboard?');\">Reset All</button></form>
-    </div>
   </div>
 </body></html>
 """
@@ -605,7 +636,7 @@ def parse_form(body):
     return values
 
 
-async def handle_client(reader, writer, state):
+async def handle_client(reader, writer, state, renderer):
     try:
         request_line = (await reader.readline()).decode("utf-8")
         if not request_line:
@@ -638,16 +669,16 @@ async def handle_client(reader, writer, state):
         elif method == "POST" and path == "/colors":
             values = parse_form(body)
             state.update_text_colors(values)
-            response = "HTTP/1.1 303 See Other\r\nLocation: /\r\n\r\n"
+            response = "HTTP/1.1 303 See Other\r\nLocation: /config\r\n\r\n"
         elif method == "POST" and path == "/brightness":
             values = parse_form(body)
             state.set_brightness(values.get("brightness", "1.0"))
-            response = "HTTP/1.1 303 See Other\r\nLocation: /\r\n\r\n"
+            response = "HTTP/1.1 303 See Other\r\nLocation: /config\r\n\r\n"
         elif method == "POST" and path == "/batting-order":
             values = parse_form(body)
             state.set_batting_order(values.get("batting_order_a", "9"), values.get("batting_order_b", "9"))
-            response = "HTTP/1.1 303 See Other\r\nLocation: /\r\n\r\n"
-        else:
+            response = "HTTP/1.1 303 See Other\r\nLocation: /config\r\n\r\n"
+        elif method == "GET" and path == "/config":
             batting_order_controls = ""
             if BATTING_ORDER_ENABLED:
                 batting_order_controls = BATTING_ORDER_HTML.format(
@@ -656,16 +687,7 @@ async def handle_client(reader, writer, state):
                     current_batter_a=state.current_batter_a + 1,
                     current_batter_b=state.current_batter_b + 1,
                 )
-            page = HTML_TEMPLATE.format(
-                team_a=state.team_a,
-                team_b=state.team_b,
-                score_a=state.score_a,
-                score_b=state.score_b,
-                inning=state.inning,
-                inning_half=state.inning_half,
-                balls=state.balls,
-                strikes=state.strikes,
-                outs=state.outs,
+            page = CONFIG_TEMPLATE.format(
                 team_a_name_color=state.text_colors["team_a_name"],
                 team_a_score_color=state.text_colors["team_a_score"],
                 team_b_name_color=state.text_colors["team_b_name"],
@@ -676,6 +698,32 @@ async def handle_client(reader, writer, state):
                 brightness=state.brightness,
                 brightness_label="{:.0f}%".format(state.brightness * 100),
                 batting_order_controls=batting_order_controls,
+            )
+            response = (
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/html\r\n"
+                "Connection: close\r\n\r\n" + page
+            )
+        else:
+            temperature_f, humidity = renderer.get_environment_for_web()
+            temperature_label = "--"
+            humidity_label = "--"
+            if temperature_f is not None:
+                temperature_label = str(temperature_f) + "°F"
+            if humidity is not None:
+                humidity_label = str(humidity) + "%"
+            page = HTML_TEMPLATE.format(
+                team_a=state.team_a,
+                team_b=state.team_b,
+                score_a=state.score_a,
+                score_b=state.score_b,
+                inning=state.inning,
+                inning_half=state.inning_half,
+                balls=state.balls,
+                strikes=state.strikes,
+                outs=state.outs,
+                temperature_label=temperature_label,
+                humidity_label=humidity_label,
             )
             response = (
                 "HTTP/1.1 200 OK\r\n"
@@ -795,7 +843,7 @@ async def main_async():
 
     connect_wifi()
 
-    await asyncio.start_server(lambda r, w: handle_client(r, w, state), "0.0.0.0", 80)
+    await asyncio.start_server(lambda r, w: handle_client(r, w, state, renderer), "0.0.0.0", 80)
     print("HTTP server listening on port 80")
 
     asyncio.create_task(render_loop(renderer))
