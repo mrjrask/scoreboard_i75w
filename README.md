@@ -8,7 +8,7 @@ This project is rewritten for **Pimoroni Interstate 75 W** (RP2040 + Wi-Fi) driv
 - Renders a baseball scoreboard on the HUB75 panel.
 - Hosts a lightweight web controller from the Interstate 75 W itself (port `80`) when Wi-Fi is configured.
 - Supports:
-  - Team names (`TEAM A`, `TEAM B`) up to 10 chars
+  - Team names (`AWAY TEAM`, `HOME TEAM`) up to 10 chars
   - Team scores +/-
   - Inning +/- and Top/Bottom toggle
   - Balls (0-3), Strikes (0-2), Outs (0-2)
