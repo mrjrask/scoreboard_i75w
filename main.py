@@ -365,25 +365,26 @@ class MatrixRenderer:
         self.g.text(score_b_text, self._right_aligned_x(score_b_text, 64, 2), 27, scale=2)
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["inning_label"]))
-        self.g.text("INN", 1, 56, scale=1)
+        self.g.text("INN", 1, 49, scale=1)
         inning_text = str(s.inning)
         inning_x = 22
-        inning_y = 56
-        inning_scale = 1
+        inning_y = 48
+        inning_scale = 2
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["inning_value"]))
         self.g.text(inning_text, inning_x, inning_y, scale=inning_scale)
 
         inning_width = len(inning_text) * 6 * inning_scale
-        arrow_x = inning_x + inning_width + 4
+        arrow_x = inning_x + inning_width + 3
+        arrow_center_y = inning_y + 7
 
         self.g.set_pen(self.RED)
-        shaft_x = arrow_x + 2
-        self.g.line(shaft_x, 56, shaft_x, 59)
+        shaft_x = arrow_x + 3
+        self.g.line(shaft_x, arrow_center_y - 4, shaft_x, arrow_center_y + 4)
         if s.inning_half == "top":
-            self.g.triangle(arrow_x, 57, arrow_x + 4, 57, arrow_x + 2, 54)
+            self.g.triangle(arrow_x, arrow_center_y - 2, arrow_x + 6, arrow_center_y - 2, arrow_x + 3, arrow_center_y - 6)
         else:
-            self.g.triangle(arrow_x, 58, arrow_x + 4, 58, arrow_x + 2, 61)
+            self.g.triangle(arrow_x, arrow_center_y + 2, arrow_x + 6, arrow_center_y + 2, arrow_x + 3, arrow_center_y + 6)
 
         self._draw_count_row(43, "B", s.balls, 3)
         self._draw_count_row(51, "S", s.strikes, 2)
