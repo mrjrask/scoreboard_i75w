@@ -451,7 +451,7 @@ class MatrixRenderer:
             temperature_f = self.temperature_reader.get_temperature_f(i2c_bus)
             if temperature_f is not None:
                 temp_text = str(temperature_f)
-                temp_y = 55
+                temp_y = 58
                 temp_x = 0
                 degree_x = temp_x + (len(temp_text) * 6)
                 f_x = degree_x + 3
