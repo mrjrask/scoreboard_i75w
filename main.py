@@ -388,16 +388,16 @@ class MatrixRenderer:
         self.g.text(inning_text, inning_x, inning_y, scale=inning_scale)
 
         inning_width = len(inning_text) * 6 * inning_scale
-        arrow_x = inning_x + inning_width + 3
+        arrow_x = inning_x + inning_width - 1
         arrow_center_y = inning_y + 7
 
         self.g.set_pen(self.RED)
-        shaft_x = arrow_x + 3
+        shaft_x = arrow_x + 1
         self.g.line(shaft_x, arrow_center_y - 4, shaft_x, arrow_center_y + 4)
         if s.inning_half == "top":
-            self.g.triangle(arrow_x, arrow_center_y - 2, arrow_x + 6, arrow_center_y - 2, arrow_x + 3, arrow_center_y - 6)
+            self.g.triangle(arrow_x, arrow_center_y - 2, arrow_x + 3, arrow_center_y - 2, arrow_x + 1, arrow_center_y - 6)
         else:
-            self.g.triangle(arrow_x, arrow_center_y + 2, arrow_x + 6, arrow_center_y + 2, arrow_x + 3, arrow_center_y + 6)
+            self.g.triangle(arrow_x, arrow_center_y + 2, arrow_x + 3, arrow_center_y + 2, arrow_x + 1, arrow_center_y + 6)
 
         self._draw_count_row(43, "B", s.balls, 3)
         self._draw_count_row(51, "S", s.strikes, 2)
