@@ -209,12 +209,21 @@ class ScoreboardState:
         self.save()
 
     def set_brightness(self, value):
+        if isinstance(value, str):
+            raw_value = value.strip()
+            if raw_value.endswith("%"):
+                try:
+                    value = float(raw_value[:-1]) / 100.0
+                except ValueError:
+                    return
         try:
             brightness = float(value)
         except (TypeError, ValueError):
             return
         if not math.isfinite(brightness):
             return
+        if brightness >= 1.0:
+            brightness = 1.0
         self.brightness = brightness
         self.clamp()
         self.save()
