@@ -12,6 +12,7 @@ This project is rewritten for **Pimoroni Interstate 75 W** (RP2040 + Wi-Fi) driv
   - Team scores +/-
   - Inning +/- and Top/Bottom toggle
   - Balls (0-3), Strikes (0-2), Outs (0-2)
+  - Optional BME280 temperature (°F) shown at the far-left of the Balls row
   - Optional batting-order tracker per team with configurable lineup size
   - Full reset
   - Automatic state persistence across board resets/reboots, including abrupt power loss after a change
@@ -27,6 +28,7 @@ This project is rewritten for **Pimoroni Interstate 75 W** (RP2040 + Wi-Fi) driv
 - Pimoroni Interstate 75 W
 - 64x64 HUB75 panel
 - Suitable 5V power supply for your panel
+- Optional Pimoroni BME280 connected to the Interstate 75 W QW/ST port
 - USB cable to your computer for flashing/copying files
 
 ## Software prerequisites (computer side)
