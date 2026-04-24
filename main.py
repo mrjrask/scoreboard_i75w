@@ -431,16 +431,16 @@ class MatrixRenderer:
         self.g.text(score_b_text, self._right_aligned_x(score_b_text, 64, 2), 27, scale=2)
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["inning_label"]))
-        self.g.text("INN", 1, 49, scale=1)
+        self.g.text("INN", 1, 40, scale=1)
 
         inning_half_text = "TOP" if s.inning_half == "top" else "BOT"
         inning_half_color = s.text_colors["team_a_name"] if s.inning_half == "top" else s.text_colors["team_b_name"]
         self.g.set_pen(self._pen_from_hex(inning_half_color))
-        self.g.text(inning_half_text, 1, 56, scale=1)
+        self.g.text(inning_half_text, 1, 47, scale=1)
 
         inning_text = str(s.inning)
         inning_x = 22
-        inning_y = 48
+        inning_y = 39
         inning_scale = 2
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["inning_value"]))
@@ -450,8 +450,21 @@ class MatrixRenderer:
         if i2c_bus is not None:
             temperature_f = self.temperature_reader.get_temperature_f(i2c_bus)
             if temperature_f is not None:
-                self.g.set_pen(self._pen_from_hex(s.text_colors["count_labels"]))
-                self.g.text(str(temperature_f) + "F", 0, 40, scale=1)
+                temp_text = str(temperature_f)
+                temp_y = 55
+                temp_x = 0
+                f_x = temp_x + (len(temp_text) * 6) + 6
+                degree_x = f_x - 5
+                degree_y = temp_y + 1
+
+                temp_pen = self._pen_from_hex(s.text_colors["count_labels"])
+                self.g.set_pen(temp_pen)
+                self.g.text(temp_text, temp_x, temp_y, scale=1)
+                self.g.pixel(degree_x, degree_y)
+                self.g.pixel(degree_x + 1, degree_y)
+                self.g.pixel(degree_x, degree_y + 1)
+                self.g.pixel(degree_x + 1, degree_y + 1)
+                self.g.text("F", f_x, temp_y, scale=1)
 
         self._draw_count_row(43, "B", s.balls, 3)
         self._draw_count_row(51, "S", s.strikes, 2)
