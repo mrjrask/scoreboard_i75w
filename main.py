@@ -278,14 +278,25 @@ class MatrixRenderer:
         self._pen_cache = {}
         self._apply_brightness()
 
-    def _apply_brightness(self):
-        # Pimoroni API exposes brightness on either Interstate75 or display.
-        for target in (self.i75, self.g):
+    def _set_brightness_target(self, target, brightness):
+        for method_name in ("set_brightness", "set_led_brightness", "set_backlight"):
             try:
-                target.set_brightness(self.state.brightness)
-                return
+                getattr(target, method_name)(brightness)
+                return True
             except Exception:
                 pass
+        try:
+            target.brightness = brightness
+            return True
+        except Exception:
+            return False
+
+    def _apply_brightness(self):
+        # Pimoroni APIs vary by firmware version, so try a few options.
+        for target in (self.i75, self.g):
+            if self._set_brightness_target(target, self.state.brightness):
+                return
+        print("Warning: unable to apply brightness with available APIs.")
 
     def _pen_from_hex(self, color_hex):
         if color_hex in self._pen_cache:
@@ -310,22 +321,37 @@ class MatrixRenderer:
         text_width = len(text) * 6 * scale
         return max(0, right_edge - text_width)
 
-    def _draw_batting_order(self, x, y, count, current_batter, color_hex):
+    def _draw_batting_order(self, x, y, count, current_batter, color_hex, pulse_mix):
         team_pen = self._pen_from_hex(color_hex)
+        active_pen = self._pen_from_hex(self._mix_hex_colors(color_hex, "#FFFFFF", pulse_mix))
         for batter in range(count):
-            self.g.set_pen(self.WHITE if batter == current_batter else team_pen)
+            self.g.set_pen(active_pen if batter == current_batter else team_pen)
             self.g.pixel(x + batter * 3, y)
+
+    def _mix_hex_colors(self, color_a, color_b, mix):
+        mix = min(max(mix, 0.0), 1.0)
+        r_a = int(color_a[1:3], 16)
+        g_a = int(color_a[3:5], 16)
+        b_a = int(color_a[5:7], 16)
+        r_b = int(color_b[1:3], 16)
+        g_b = int(color_b[3:5], 16)
+        b_b = int(color_b[5:7], 16)
+        r = int(r_a + (r_b - r_a) * mix)
+        g = int(g_a + (g_b - g_a) * mix)
+        b = int(b_a + (b_b - b_a) * mix)
+        return "#{:02X}{:02X}{:02X}".format(r, g, b)
 
     def draw(self):
         s = self.state
         self._apply_brightness()
+        pulse_mix = (math.sin(time.ticks_ms() / 200.0) + 1.0) / 2.0
         self.g.set_pen(self.BLACK)
         self.g.clear()
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_name"]))
         self.g.text(s.team_a, 0, 0, scale=1)
         if BATTING_ORDER_ENABLED:
-            self._draw_batting_order(0, 2, s.batting_order_a, s.current_batter_a, s.text_colors["team_a_name"])
+            self._draw_batting_order(0, 9, s.batting_order_a, s.current_batter_a, s.text_colors["team_a_name"], pulse_mix)
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_score"]))
         score_a_text = str(s.score_a)
         self.g.text(score_a_text, self._right_aligned_x(score_a_text, 64, 2), 8, scale=2)
@@ -333,13 +359,13 @@ class MatrixRenderer:
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_name"]))
         self.g.text(s.team_b, 0, 20, scale=1)
         if BATTING_ORDER_ENABLED:
-            self._draw_batting_order(0, 22, s.batting_order_b, s.current_batter_b, s.text_colors["team_b_name"])
+            self._draw_batting_order(0, 29, s.batting_order_b, s.current_batter_b, s.text_colors["team_b_name"], pulse_mix)
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_score"]))
         score_b_text = str(s.score_b)
         self.g.text(score_b_text, self._right_aligned_x(score_b_text, 64, 2), 27, scale=2)
 
         self.g.set_pen(self._pen_from_hex(s.text_colors["inning_label"]))
-        self.g.text("INN", 1, 45, scale=1)
+        self.g.text("INN", 1, 56, scale=1)
         inning_text = str(s.inning)
         inning_x = 22
         inning_y = 43
@@ -348,15 +374,14 @@ class MatrixRenderer:
         self.g.set_pen(self._pen_from_hex(s.text_colors["inning_value"]))
         self.g.text(inning_text, inning_x, inning_y, scale=inning_scale)
 
-        # Approximate the center of the inning text so top/bottom indicators
-        # are centered directly above/below the value.
-        inning_center_x = inning_x + (len(inning_text) * 6 * inning_scale) // 2
+        inning_width = len(inning_text) * 6 * inning_scale
+        inning_center_x = inning_x + inning_width // 2
 
         self.g.set_pen(self.RED)
         if s.inning_half == "top":
-            self.g.triangle(inning_center_x - 2, 39, inning_center_x - 6, 43, inning_center_x + 2, 43)
+            self.g.triangle(inning_center_x, 39, inning_center_x - 4, 43, inning_center_x + 4, 43)
         else:
-            self.g.triangle(inning_center_x - 6, 55, inning_center_x + 2, 55, inning_center_x - 2, 59)
+            self.g.triangle(inning_center_x - 4, 55, inning_center_x + 4, 55, inning_center_x, 59)
 
         self._draw_count_row(43, "B", s.balls, 3)
         self._draw_count_row(51, "S", s.strikes, 2)
