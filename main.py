@@ -272,12 +272,12 @@ class MatrixRenderer:
         self.g = self.i75.display
 
         self.BLACK = self.g.create_pen(0, 0, 0)
-        self.WHITE = self.g.create_pen(255, 255, 255)
-        self.RED = self.g.create_pen(255, 40, 0)
-        self.DIM = self.g.create_pen(48, 48, 48)
+        self.RED_HEX = "#FF2800"
+        self.DIM_HEX = "#303030"
         self._pen_cache = {}
         self._pulse_pen_cache = {}
         self._pulse_steps = 12
+        self._last_brightness = None
         self._apply_brightness()
 
     def _set_brightness_target(self, target, brightness):
@@ -301,13 +301,15 @@ class MatrixRenderer:
         print("Warning: unable to apply brightness with available APIs.")
 
     def _pen_from_hex(self, color_hex):
-        if color_hex in self._pen_cache:
-            return self._pen_cache[color_hex]
-        r = int(color_hex[1:3], 16)
-        g = int(color_hex[3:5], 16)
-        b = int(color_hex[5:7], 16)
+        cache_key = (color_hex, self.state.brightness)
+        if cache_key in self._pen_cache:
+            return self._pen_cache[cache_key]
+        scale = self.state.brightness
+        r = int(int(color_hex[1:3], 16) * scale)
+        g = int(int(color_hex[3:5], 16) * scale)
+        b = int(int(color_hex[5:7], 16) * scale)
         pen = self.g.create_pen(r, g, b)
-        self._pen_cache[color_hex] = pen
+        self._pen_cache[cache_key] = pen
         return pen
 
     def _draw_count_row(self, y, label, count, max_count):
@@ -315,7 +317,7 @@ class MatrixRenderer:
         self.g.set_pen(self._pen_from_hex(s.text_colors["count_labels"]))
         self.g.text(label, 36, y - 3, scale=1)
         for i in range(max_count):
-            self.g.set_pen(self.RED if i < count else self.DIM)
+            self.g.set_pen(self._pen_from_hex(self.RED_HEX if i < count else self.DIM_HEX))
             self.g.circle(45 + i * 7, y, 2)
 
     def _right_aligned_x(self, text, right_edge, scale):
@@ -356,6 +358,10 @@ class MatrixRenderer:
 
     def draw(self):
         s = self.state
+        if self._last_brightness != s.brightness:
+            self._pen_cache = {}
+            self._pulse_pen_cache = {}
+            self._last_brightness = s.brightness
         self._apply_brightness()
         pulse_mix = (math.sin(time.ticks_ms() / 200.0) + 1.0) / 2.0
         self.g.set_pen(self.BLACK)
