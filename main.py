@@ -31,8 +31,8 @@ class ScoreboardState:
     STATE_TMP_FILE = "scoreboard_state.tmp"
 
     def __init__(self):
-        self.team_a = "TEAM A"
-        self.team_b = "TEAM B"
+        self.team_a = "AWAY TEAM"
+        self.team_b = "HOME TEAM"
         self.score_a = 0
         self.score_b = 0
         self.inning = 1
@@ -140,8 +140,8 @@ class ScoreboardState:
         self.save()
 
     def rename(self, team_a, team_b):
-        self.team_a = (team_a or "TEAM A").strip().upper()
-        self.team_b = (team_b or "TEAM B").strip().upper()
+        self.team_a = (team_a or "AWAY TEAM").strip().upper()
+        self.team_b = (team_b or "HOME TEAM").strip().upper()
         self.save()
 
     def update_text_colors(self, values):
@@ -217,8 +217,8 @@ class ScoreboardState:
             self.clamp()
             return
 
-        self.team_a = str(saved.get("team_a", self.team_a)).strip().upper() or "TEAM A"
-        self.team_b = str(saved.get("team_b", self.team_b)).strip().upper() or "TEAM B"
+        self.team_a = str(saved.get("team_a", self.team_a)).strip().upper() or "AWAY TEAM"
+        self.team_b = str(saved.get("team_b", self.team_b)).strip().upper() or "HOME TEAM"
         self.score_a = int(saved.get("score_a", self.score_a))
         self.score_b = int(saved.get("score_b", self.score_b))
         self.inning = int(saved.get("inning", self.inning))
@@ -437,12 +437,12 @@ HTML_TEMPLATE = """<!doctype html>
   <div class=\"card\">
     <form method=\"post\" action=\"/colors\">
       <div class=\"row\">
-        <label>Team A Name <input type=\"color\" name=\"team_a_name\" value=\"{team_a_name_color}\"></label>
-        <label>Team A Score <input type=\"color\" name=\"team_a_score\" value=\"{team_a_score_color}\"></label>
+        <label>Away Team Name <input type=\"color\" name=\"team_a_name\" value=\"{team_a_name_color}\"></label>
+        <label>Away Team Score <input type=\"color\" name=\"team_a_score\" value=\"{team_a_score_color}\"></label>
       </div>
       <div class=\"row\">
-        <label>Team B Name <input type=\"color\" name=\"team_b_name\" value=\"{team_b_name_color}\"></label>
-        <label>Team B Score <input type=\"color\" name=\"team_b_score\" value=\"{team_b_score_color}\"></label>
+        <label>Home Team Name <input type=\"color\" name=\"team_b_name\" value=\"{team_b_name_color}\"></label>
+        <label>Home Team Score <input type=\"color\" name=\"team_b_score\" value=\"{team_b_score_color}\"></label>
       </div>
       <div class=\"row\">
         <label>Inning Label <input type=\"color\" name=\"inning_label\" value=\"{inning_label_color}\"></label>
@@ -497,11 +497,11 @@ HTML_TEMPLATE = """<!doctype html>
 
 BATTING_ORDER_HTML = """<div class=\"card\">
     <b>Batting Order</b><br>
-    Team A Batter: {current_batter_a}/{batting_order_a} | Team B Batter: {current_batter_b}/{batting_order_b}
+    Away Team Batter: {current_batter_a}/{batting_order_a} | Home Team Batter: {current_batter_b}/{batting_order_b}
     <div class=\"row\" style=\"margin-top: 8px;\">
       <form method=\"post\" action=\"/batting-order\">
-        <label>Team A Batters <input type=\"number\" min=\"1\" max=\"20\" name=\"batting_order_a\" value=\"{batting_order_a}\"></label>
-        <label>Team B Batters <input type=\"number\" min=\"1\" max=\"20\" name=\"batting_order_b\" value=\"{batting_order_b}\"></label>
+        <label>Away Team Batters <input type=\"number\" min=\"1\" max=\"20\" name=\"batting_order_a\" value=\"{batting_order_a}\"></label>
+        <label>Home Team Batters <input type=\"number\" min=\"1\" max=\"20\" name=\"batting_order_b\" value=\"{batting_order_b}\"></label>
         <button type=\"submit\">Save Batting Order</button>
       </form>
     </div>
@@ -570,7 +570,7 @@ async def handle_client(reader, writer, state):
             response = "HTTP/1.1 303 See Other\r\nLocation: /\r\n\r\n"
         elif method == "POST" and path == "/rename":
             values = parse_form(body)
-            state.rename(values.get("team_a", "TEAM A"), values.get("team_b", "TEAM B"))
+            state.rename(values.get("team_a", "AWAY TEAM"), values.get("team_b", "HOME TEAM"))
             response = "HTTP/1.1 303 See Other\r\nLocation: /\r\n\r\n"
         elif method == "POST" and path == "/colors":
             values = parse_form(body)
