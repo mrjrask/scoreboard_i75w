@@ -344,6 +344,34 @@ class MatrixRenderer:
         self._last_brightness = None
         self._apply_brightness()
 
+    def _temperature_color_hex(self, temperature_f):
+        # Match the provided 10°F color bands from -10°F to 100°F.
+        if temperature_f is None:
+            return self.state.text_colors["count_labels"]
+        if temperature_f >= 100:
+            return "#CC0000"
+        if temperature_f >= 90:
+            return "#E00000"
+        if temperature_f >= 80:
+            return "#FF1A1A"
+        if temperature_f >= 70:
+            return "#F39A44"
+        if temperature_f >= 60:
+            return "#FFCC00"
+        if temperature_f >= 50:
+            return "#9AD04B"
+        if temperature_f >= 40:
+            return "#00B050"
+        if temperature_f >= 30:
+            return "#1C93E8"
+        if temperature_f >= 20:
+            return "#3A3AE6"
+        if temperature_f >= 10:
+            return "#7A33B7"
+        if temperature_f >= 0:
+            return "#A000A0"
+        return "#D100B8"
+
     def _set_brightness_target(self, target, brightness):
         for method_name in ("set_brightness", "set_led_brightness", "set_backlight"):
             try:
@@ -474,7 +502,7 @@ class MatrixRenderer:
                 f_x = degree_x + 3
                 degree_y = temp_y + 1
 
-                temp_pen = self._pen_from_hex(s.text_colors["count_labels"])
+                temp_pen = self._pen_from_hex(self._temperature_color_hex(temperature_f))
                 self.g.set_pen(temp_pen)
                 self.g.text(temp_text, temp_x, temp_y, scale=1)
                 self.g.pixel(degree_x, degree_y)
