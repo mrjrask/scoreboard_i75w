@@ -8,6 +8,7 @@ phone/browser control over Wi-Fi.
 import uasyncio as asyncio
 import time
 import math
+import socket
 
 try:
     import network
@@ -524,6 +525,84 @@ class MatrixRenderer:
         return self.environment_reader.get_environment(i2c_bus)
 
 
+class NetworkLedController:
+    COLOR_RED = (255, 0, 0)
+    COLOR_YELLOW = (255, 180, 0)
+    COLOR_GREEN = (0, 255, 0)
+    COLOR_OFF = (0, 0, 0)
+
+    def __init__(self, i75, wlan):
+        self.i75 = i75
+        self.wlan = wlan
+        self._last_color = None
+        self._internet_available = False
+        self._last_internet_check_ms = None
+        self._internet_check_interval_ms = 5000
+
+    def _set_led_color(self, color):
+        if color == self._last_color:
+            return
+
+        r, g, b = color
+        setters = ("set_led", "set_rgb_led", "set_status_led")
+        for method_name in setters:
+            try:
+                getattr(self.i75, method_name)(r, g, b)
+                self._last_color = color
+                return
+            except Exception:
+                pass
+
+        # Best effort fallback if firmware exposes per-channel pins.
+        try:
+            self.i75.led_r.value(1 if r > 0 else 0)
+            self.i75.led_g.value(1 if g > 0 else 0)
+            self.i75.led_b.value(1 if b > 0 else 0)
+            self._last_color = color
+        except Exception:
+            pass
+
+    def _wifi_connected(self):
+        return self.wlan is not None and self.wlan.active() and self.wlan.isconnected()
+
+    def _probe_internet(self):
+        # Do a lightweight TCP probe to a public DNS server.
+        # This distinguishes "connected to Wi-Fi" from "internet reachable".
+        sock = None
+        try:
+            sock = socket.socket()
+            sock.settimeout(1)
+            sock.connect(("1.1.1.1", 53))
+            return True
+        except Exception:
+            return False
+        finally:
+            try:
+                if sock is not None:
+                    sock.close()
+            except Exception:
+                pass
+
+    def update(self):
+        if not self._wifi_connected():
+            self._internet_available = False
+            self._set_led_color(self.COLOR_RED)
+            return
+
+        now = time.ticks_ms()
+        should_check = self._last_internet_check_ms is None
+        if not should_check:
+            should_check = time.ticks_diff(now, self._last_internet_check_ms) >= self._internet_check_interval_ms
+        if should_check:
+            self._internet_available = self._probe_internet()
+            self._last_internet_check_ms = now
+
+        if self._internet_available:
+            self._set_led_color(self.COLOR_GREEN)
+        else:
+            self._set_led_color(self.COLOR_YELLOW)
+
+
 HTML_TEMPLATE = """<!doctype html>
 <html>
 <head>
@@ -881,8 +960,10 @@ async def render_loop(renderer):
 async def main_async():
     state = ScoreboardState()
     renderer = MatrixRenderer(state)
+    network_led = NetworkLedController(renderer.i75, None)
 
-    connect_wifi()
+    wlan = connect_wifi()
+    network_led.wlan = wlan
 
     await asyncio.start_server(lambda r, w: handle_client(r, w, state, renderer), "0.0.0.0", 80)
     print("HTTP server listening on port 80")
@@ -890,6 +971,7 @@ async def main_async():
     asyncio.create_task(render_loop(renderer))
 
     while True:
+        network_led.update()
         await asyncio.sleep(1)
 
 
