@@ -419,11 +419,20 @@ class MatrixRenderer:
         return max(0, right_edge - text_width)
 
     def _draw_batting_order(self, x, y, count, current_batter, color_hex, pulse_mix):
+        # Keep the batting-order indicator in the left score gutter so it
+        # never runs back through the team-name text or into the score digits.
+        # With up to 20 batters, wrapping after 10 keeps the marker under 30px
+        # wide on the 64x64 matrix.
+        batters_per_row = 10
+        row_spacing = 3
+        column_spacing = 3
         team_pen = self._pen_from_hex(color_hex)
         active_pen = self._pulse_pen(color_hex, pulse_mix)
         for batter in range(count):
+            row = batter // batters_per_row
+            column = batter % batters_per_row
             self.g.set_pen(active_pen if batter == current_batter else team_pen)
-            self.g.pixel(x + batter * 3, y)
+            self.g.pixel(x + column * column_spacing, y + row * row_spacing)
 
     def _pulse_pen(self, color_hex, pulse_mix):
         step = int(min(max(pulse_mix, 0.0), 1.0) * self._pulse_steps)
@@ -463,7 +472,7 @@ class MatrixRenderer:
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_name"]))
         self.g.text(s.team_a, 0, 0, scale=1)
         if BATTING_ORDER_ENABLED:
-            self._draw_batting_order(0, 9, s.batting_order_a, s.current_batter_a, s.text_colors["team_a_name"], pulse_mix)
+            self._draw_batting_order(0, 10, s.batting_order_a, s.current_batter_a, s.text_colors["team_a_name"], pulse_mix)
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_a_score"]))
         score_a_text = str(s.score_a)
         self.g.text(score_a_text, self._right_aligned_x(score_a_text, 64, 2), 8, scale=2)
@@ -471,7 +480,7 @@ class MatrixRenderer:
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_name"]))
         self.g.text(s.team_b, 0, 20, scale=1)
         if BATTING_ORDER_ENABLED:
-            self._draw_batting_order(0, 29, s.batting_order_b, s.current_batter_b, s.text_colors["team_b_name"], pulse_mix)
+            self._draw_batting_order(0, 30, s.batting_order_b, s.current_batter_b, s.text_colors["team_b_name"], pulse_mix)
         self.g.set_pen(self._pen_from_hex(s.text_colors["team_b_score"]))
         score_b_text = str(s.score_b)
         self.g.text(score_b_text, self._right_aligned_x(score_b_text, 64, 2), 27, scale=2)
