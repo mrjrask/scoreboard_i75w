@@ -22,6 +22,7 @@ This project is rewritten for **Pimoroni Interstate 75 W** (RP2040 + Wi-Fi) driv
 - `main.py` – complete scoreboard + renderer + tiny web server for MicroPython
 - `secrets.example.py` – Wi-Fi credential template
 - `install.sh` – optional helper to deploy files with `mpremote`
+- `color_band_test.py` – optional RGB matrix color-band diagnostic for current Pimoroni firmware
 
 ## Hardware required
 
@@ -72,6 +73,18 @@ mpremote fs cp main.py :main.py
 mpremote fs cp secrets.py :secrets.py
 ```
 
+To run only the panel color diagnostic instead of the scoreboard, copy and run
+`color_band_test.py`:
+
+```bash
+mpremote fs cp color_band_test.py :main.py
+mpremote reset
+```
+
+The diagnostic uses `Interstate75.display` / PicoGraphics drawing methods. It
+does not call the older `hub75.set_rgb(...)` API, which is not present in some
+current Pimoroni Interstate 75 W firmware builds.
+
 3. Reboot device:
 
 ```bash
@@ -102,4 +115,5 @@ mpremote reset
   firmware and the phone/computer. If unavailable, use `http://score` (if your router
   resolves DHCP names) or the printed IP address.
 - **Panel not updating:** Confirm you flashed Pimoroni Interstate 75 W MicroPython firmware.
+- **`AttributeError: 'hub75' object has no attribute 'set_rgb'`:** Update any copied test scripts to use `Interstate75.display` drawing methods (`create_pen`, `set_pen`, `pixel`, `rectangle`) or use the included `color_band_test.py` diagnostic.
 - **Dim/flicker:** Verify power supply current capability and HUB75 wiring orientation.
